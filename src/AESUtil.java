@@ -4,14 +4,12 @@ import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
-import java.math.BigInteger;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.Date;
 
-public class Test {
-
+public class AESUtil {
     public static SecretKey generateAESKey() throws NoSuchAlgorithmException {
         KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
         keyGenerator.init(256);
@@ -33,14 +31,28 @@ public class Test {
         return ivParameterSpec;
     }
 
-    public static byte[] getSHA256HashedValue(String input) throws NoSuchAlgorithmException {
-        MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
-        return messageDigest.digest(input.getBytes());
+    public static byte[] encrypt(byte[] input, SecretKey key, IvParameterSpec ivParameterSpec) {
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, key, ivParameterSpec);
+            return cipher.doFinal(input);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return null;
+        }
     }
 
-    public static String convertByteArrayToHexArray(byte[] hash) {
-        return new BigInteger(1, hash).toString(16);
+    public static byte[] decrypt(byte[] encryptedBytes, SecretKey key, IvParameterSpec ivParameterSpec) {
+        try {
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.DECRYPT_MODE, key, ivParameterSpec);
+            return cipher.doFinal(encryptedBytes);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return null;
+        }
     }
+
 
     /**
      * Each message is encrypted as follows. The client generates a fresh 256-bit AES
@@ -54,7 +66,7 @@ public class Test {
      * @param unencryptedMessage
      * @param recipientUserId
      */
-    public static Message encrypt(String unencryptedMessage, String recipientUserId) {
+    public static Message generateMessageObject(String unencryptedMessage, String recipientUserId) {
         Message message = null;
 //        private String recipientHash; // SHA-256 hash of recipient userid
 //        private Date timestamp;       // timestamp (java.util.Date)
@@ -67,7 +79,7 @@ public class Test {
             message.setTimestamp(new Date());
 
             // generate hash of user id and storing in recipientHash
-            message.setRecipientHash(convertByteArrayToHexArray(getSHA256HashedValue(recipientUserId)));
+            message.setRecipientHash(CommonUtils.convertByteArrayToHexArray(CommonUtils.getSHA256HashedValue(recipientUserId)));
 
             String concatenatedString = recipientUserId + "\n" + unencryptedMessage;
 
@@ -76,25 +88,19 @@ public class Test {
 
             //generate IV vector
             IvParameterSpec ivParameterSpec = getRandomIV(16);
-            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            cipher.init(Cipher.ENCRYPT_MODE, aesKey, ivParameterSpec);
-            message.setEncryptedMsg(cipher.doFinal(concatenatedString.getBytes("UTF-8")));
+            message.setEncryptedMsg(encrypt(concatenatedString.getBytes("UTF-8"), aesKey, ivParameterSpec));
             message.setIv(ivParameterSpec.getIV());
 
             // encrypt the aesKey with recipients public key
-            
+            PublicKey publicKey = CommonUtils.readPublicKey(recipientUserId);
+            message.setKey(RSAUtil.encrypt(aesKey.getEncoded(), publicKey));
+
+            // signature
+
 
         } catch (Exception ex) {
 
         }
         return message;
     }
-
-//    public static void sign(Message message, )
-//
-//    public static void main(String[] args) {
-//        generateAESKey();
-//        getRandomIV();
-//    }
-
 }

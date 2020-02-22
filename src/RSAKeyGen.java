@@ -1,3 +1,5 @@
+package src;
+
 /* This program generates a pair of matching public/private RSA keys.
  * It takes a userid as an argument, and places the generated keys in
  * "<userid>.pub" and "<userid>.prv" in the current working directory.
