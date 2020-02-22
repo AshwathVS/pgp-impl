@@ -3,26 +3,77 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Server {
 
-    public static void insert(Message message, Map<String, List<Message>> messageMap) {
-        if (messageMap.containsKey(message.getRecipientHash())) {
-            messageMap.get(message.getRecipientHash()).add(message);
+    private static final ConcurrentHashMap<String, List<Message>> messageStore = new ConcurrentHashMap<>(100);
+
+    public static void insert(Message message) {
+        if (messageStore.containsKey(message.getRecipientHash())) {
+            messageStore.get(message.getRecipientHash()).add(message);
         } else {
-            messageMap.put(message.getRecipientHash(), new ArrayList<>(10) {{
-                add(message);
-            }});
+            messageStore.put(message.getRecipientHash(), Collections.singletonList(message));
         }
     }
 
-    public static void main(String[] args) throws Exception {
+    public static byte[] serializeObject(Serializable object) throws Exception {
+        System.out.println("Serialization started at: " + new Date());
+        ByteArrayOutputStream baos = null;
+        ObjectOutputStream oos = null;
+        byte[] res = null;
 
-        Map<String, List<Message>> messageStore = new HashMap<>(100);
+        try {
+            baos = new ByteArrayOutputStream();
+            oos = new ObjectOutputStream(baos);
+
+            oos.writeObject(object);
+            oos.flush();
+
+            res = baos.toByteArray();
+
+        } catch (Exception ex) {
+            throw ex;
+        } finally {
+            try {
+                if(oos != null)
+                    oos.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        System.out.println("Serialization ended at: " + new Date());
+        return res;
+    }
+
+    public static Serializable deserializeObject(byte[] rowObject) throws Exception {
+        System.out.println("Deserialization started at: " + new Date());
+        ObjectInputStream ois = null;
+        Serializable res = null;
+
+        try {
+
+            ois = new ObjectInputStream(new ByteArrayInputStream(rowObject));
+            res = (Serializable) ois.readObject();
+
+        } catch (Exception ex) {
+            throw ex;
+        } finally {
+            try {
+                if(ois != null)
+                    ois.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+        }
+        System.out.println("Deserialization ended at: " + new Date());
+        return res;
+
+    }
+
+    public static void main(String[] args) throws Exception {
 
         int port = Integer.parseInt(args[0]);
         ServerSocket ss = new ServerSocket(port);
@@ -32,39 +83,44 @@ public class Server {
         while(true) {
 
             Socket s = ss.accept();
-            ObjectInputStream dis = new ObjectInputStream(s.getInputStream());
-            ObjectOutputStream dos = new ObjectOutputStream(s.getOutputStream());
+            DataInputStream dis = new DataInputStream(s.getInputStream());
+            DataOutputStream dos = new DataOutputStream(s.getOutputStream());
 
             Object inp = null;
 
             try {
-                while ((inp = dis.readObject()) != null) {
-                    RequestEnvelope<Object> messageRequestEnvelope = (RequestEnvelope<Object>) inp;
-                    RequestEnvelope.EnumRequestType enumRequestType = messageRequestEnvelope.getMessageType();
+                while ((inp = deserializeObject(dis.readAllBytes())) != null) {
+                    Message.RequestEnvelope<Object> messageRequestEnvelope = (Message.RequestEnvelope<Object>) inp;
+                    Message.RequestEnvelope.EnumRequestType enumRequestType = messageRequestEnvelope.getMessageType();
 
                     // Reading the messages
-                    if (enumRequestType == RequestEnvelope.EnumRequestType.READ) {
+                    if (enumRequestType == Message.RequestEnvelope.EnumRequestType.READ) {
                         String userId = (String) messageRequestEnvelope.getMessageObject();
                         List<Message> messages = messageStore.get(userId);
 
                         // deleting the messages
-                        messageStore.put(userId, null);
+                        messageStore.remove(userId);
 
                         // send the messages in a response envelope
-                        ResponseEnvelope<List<Message>> responseEnvelope = new ResponseEnvelope<>(messages, ResponseEnvelope.EnumResponseStatus.OK);
-                        dos.writeObject(responseEnvelope);
+                        Message.ResponseEnvelope<List<Message>> responseEnvelope = new Message.ResponseEnvelope<List<Message>>(messages, Message.ResponseEnvelope.EnumResponseStatus.OK);
+                        dos.write(serializeObject(responseEnvelope));
                     }
 
                     // writing (storing) a new message
-                    else if (enumRequestType == RequestEnvelope.EnumRequestType.WRITE) {
+                    else if (enumRequestType == Message.RequestEnvelope.EnumRequestType.WRITE) {
                         Message message = (Message) messageRequestEnvelope.getMessageObject();
-                        insert(message, messageStore);
+                        insert(message);
+                        System.out.println("Message stored.");
+                        dos.write(serializeObject(new Message.ResponseEnvelope<String>("Ok", Message.ResponseEnvelope.EnumResponseStatus.OK)));
                     } else {
                         System.out.println("Unknown operation, rejecting request.");
                     }
                 }
             } catch (IOException e) {
-                System.err.println("Client closed its connection.");
+                s.close();
+//                System.err.println("Client closed its connection.");
+            } catch (Exception ex) {
+                ex.printStackTrace();
             }
 
         }
