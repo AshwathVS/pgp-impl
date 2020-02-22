@@ -60,4 +60,8 @@ public class Message implements Serializable {
     public void setSignature(byte[] signature) {
         this.signature = signature;
     }
+
+    public String generateDataToBeSigned() {
+        return this.recipientHash + this.timestamp + this.key + this.iv + this.encryptedMsg;
+    }
 }

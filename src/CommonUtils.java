@@ -2,17 +2,25 @@
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.security.*;
 import java.util.Date;
 
 public class CommonUtils {
-    public static byte[] getSHA256HashedValue(String input) throws NoSuchAlgorithmException {
-        MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
-        return messageDigest.digest(input.getBytes());
+
+    public static byte[] getSHA256HashedValue(String input) {
+        try {
+            MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
+            return messageDigest.digest(input.getBytes());
+        } catch (NoSuchAlgorithmException ex) {
+            ex.printStackTrace();
+            return null;
+        }
     }
 
     public static String convertByteArrayToHexArray(byte[] hash) {
@@ -37,17 +45,24 @@ public class CommonUtils {
             FileInputStream fileInputStream = new FileInputStream(userId + ".prv");
             ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
             privateKey = (PrivateKey) objectInputStream.readObject();
-            Object object = new Object();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return privateKey;
     }
 
-    public static byte[] signObject(Serializable serializable, PrivateKey privateKey) throws Exception {
+    public static byte[] signObject(byte[] message, PrivateKey privateKey) throws Exception {
         Signature signature = Signature.getInstance("SHA256withRSA");
-        SignedObject signedObject = new SignedObject(serializable, privateKey, signature);
-        return signedObject.getSignature();
+        signature.update(message);
+        signature.initSign(privateKey);
+        return signature.sign();
+    }
+
+    public static boolean verifySign(byte[] message, PublicKey publicKey, byte[] signedSignature) throws Exception {
+        Signature signature = Signature.getInstance("SHA256withRSA");
+        signature.update(message);
+        signature.initVerify(publicKey);
+        return signature.verify(signedSignature);
     }
 
     /**
@@ -86,7 +101,7 @@ public class CommonUtils {
             message.setKey(RSAUtil.encrypt(aesKey.getEncoded(), publicKey));
 
             // signature
-            message.setSignature(signObject(message, CommonUtils.readPrivateKey(senderUserId)));
+            message.setSignature(signObject(message.generateDataToBeSigned().getBytes(), CommonUtils.readPrivateKey(senderUserId)));
 
         } catch (Exception ex) {
 
@@ -96,28 +111,54 @@ public class CommonUtils {
 
 
     public static DecryptedMessage getDecryptedMessageObject(Message encryptedMessage, String loggedInUserId) {
-        
+        DecryptedMessage decryptedMessage = null;
+        try {
+            // get aes key using current user private key
+            byte[] aesKey = RSAUtil.decrypt(encryptedMessage.getKey(), CommonUtils.readPrivateKey(loggedInUserId));
+
+            // using the aes key, iv get the encrypted message
+            SecretKey secretKey = new SecretKeySpec(aesKey, 0, aesKey.length, "AES");
+            IvParameterSpec ivParameterSpec = new IvParameterSpec(encryptedMessage.getIv());
+            String plainMessage = new String(AESUtil.decrypt(encryptedMessage.getEncryptedMsg(), secretKey, ivParameterSpec));
+            String[] splitMessage = plainMessage.split("\n");
+
+             decryptedMessage = new DecryptedMessage();
+
+            decryptedMessage.setMessage(splitMessage[1]);
+            decryptedMessage.setSenderUserId(splitMessage[0]);
+            decryptedMessage.setDateSent(encryptedMessage.getTimestamp());
+
+            //verify the signature
+            boolean isSignVerified = verifySign(encryptedMessage.generateDataToBeSigned().getBytes(), CommonUtils.readPublicKey(loggedInUserId), encryptedMessage.getSignature());
+            decryptedMessage.setSignatureVerified(isSignVerified);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return decryptedMessage;
     }
 
     public static void main(String[] args) throws Exception {
-        PublicKey publicKey = readPublicKey("ash");
-//        System.out.println(publicKey != null);
-        String base = "This is ashwath";
-        byte[] encrypted = RSAUtil.encrypt(base.getBytes(), publicKey);
+//        PublicKey publicKey = readPublicKey("ash");
+////        System.out.println(publicKey != null);
+//        String base = "This is ashwath";
+//        byte[] encrypted = RSAUtil.encrypt(base.getBytes(), publicKey);
+//
+//
+//
+//        PrivateKey privateKey = readPrivateKey("ash");
+//        String decrypted = new String(RSAUtil.decrypt(encrypted, privateKey));
+//        System.out.println(decrypted);
+////        System.out.println(privateKey != null);
+//
+//
+//        System.out.println("AES PART....");
+//        SecretKey secretKey = AESUtil.generateAESKey();
+//        IvParameterSpec ivParameterSpec = AESUtil.getRandomIV(16);
+//        byte[] encrp = AESUtil.encrypt(base.getBytes(), secretKey, ivParameterSpec);
+//        String decryp = new String(AESUtil.decrypt(encrp, secretKey, ivParameterSpec));
+//        System.out.println(decryp);
 
-
-
-        PrivateKey privateKey = readPrivateKey("ash");
-        String decrypted = new String(RSAUtil.decrypt(encrypted, privateKey));
-        System.out.println(decrypted);
-//        System.out.println(privateKey != null);
-
-
-        System.out.println("AES PART....");
-        SecretKey secretKey = AESUtil.generateAESKey();
-        IvParameterSpec ivParameterSpec = AESUtil.getRandomIV(16);
-        byte[] encrp = AESUtil.encrypt(base.getBytes(), secretKey, ivParameterSpec);
-        String decryp = new String(AESUtil.decrypt(encrp, secretKey, ivParameterSpec));
-        System.out.println(decryp);
+        Message message = generateMessageObject("this is ashwath", "jay", "ash");
     }
 }
