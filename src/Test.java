@@ -1,4 +1,4 @@
-package src;
+//package src;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -54,8 +54,8 @@ public class Test {
      * @param unencryptedMessage
      * @param recipientUserId
      */
-    public static Message encrypt(String unencryptedMessage, String recipientUserId) {
-        Message message = null;
+    public static src.Message encrypt(String unencryptedMessage, String recipientUserId) {
+        src.Message message = null;
 //        private String recipientHash; // SHA-256 hash of recipient userid
 //        private Date timestamp;       // timestamp (java.util.Date)
 //        private byte[] key;           // AES key used, encrypted with RSA
@@ -63,7 +63,7 @@ public class Test {
 //        private byte[] encryptedMsg;  // sender userid + message, encrypted with AES
 //        private byte[] signature;     // signature of all above
         try {
-            message = new Message();
+            message = new src.Message();
             message.setTimestamp(new Date());
 
             // generate hash of user id and storing in recipientHash
@@ -89,12 +89,5 @@ public class Test {
         }
         return message;
     }
-
-//    public static void sign(Message message, )
-//
-//    public static void main(String[] args) {
-//        generateAESKey();
-//        getRandomIV();
-//    }
 
 }
