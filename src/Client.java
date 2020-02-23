@@ -1,3 +1,5 @@
+//package src;
+
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -94,8 +96,8 @@ public class Client {
         final String userId = args[2];
 
         Socket s = new Socket(host, port);
-        DataInputStream dis = new DataInputStream(s.getInputStream());
-        DataOutputStream dos = new DataOutputStream(s.getOutputStream());
+        ObjectInputStream dis = new ObjectInputStream(s.getInputStream());
+        ObjectOutputStream dos = new ObjectOutputStream(s.getOutputStream());
 
         Scanner scanner = new Scanner(System.in);
         String userInput = null;
@@ -118,8 +120,8 @@ public class Client {
 
                 // generate the message object and send request to server
                 Message message = CommonUtils.generateMessageObject(userMessage, recipientUserId, userId);
-                dos.write(serializeObject(new Message.RequestEnvelope<>(message, Message.RequestEnvelope.EnumRequestType.WRITE)));
-                Message.ResponseEnvelope<String> response = (Message.ResponseEnvelope<String>) deserializeObject(dis.readAllBytes());
+                dos.writeObject(new Message.RequestEnvelope<>(message, Message.RequestEnvelope.EnumRequestType.WRITE));
+                Message.ResponseEnvelope<String> response = (Message.ResponseEnvelope<String>) dis.readObject();
                 if (!response.getResponseStatus().equals(Message.ResponseEnvelope.EnumResponseStatus.OK)) {
                     System.out.println("Message not delivered.");
                 } else {

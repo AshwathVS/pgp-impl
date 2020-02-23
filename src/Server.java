@@ -83,13 +83,13 @@ public class Server {
         while(true) {
 
             Socket s = ss.accept();
-            DataInputStream dis = new DataInputStream(s.getInputStream());
-            DataOutputStream dos = new DataOutputStream(s.getOutputStream());
+            ObjectInputStream dis = new ObjectInputStream(s.getInputStream());
+            ObjectOutputStream dos = new ObjectOutputStream(s.getOutputStream());
 
             Object inp = null;
 
             try {
-                while ((inp = deserializeObject(dis.readAllBytes())) != null) {
+                while ((inp = dis.readObject()) != null) {
                     Message.RequestEnvelope<Object> messageRequestEnvelope = (Message.RequestEnvelope<Object>) inp;
                     Message.RequestEnvelope.EnumRequestType enumRequestType = messageRequestEnvelope.getMessageType();
 
@@ -103,7 +103,7 @@ public class Server {
 
                         // send the messages in a response envelope
                         Message.ResponseEnvelope<List<Message>> responseEnvelope = new Message.ResponseEnvelope<List<Message>>(messages, Message.ResponseEnvelope.EnumResponseStatus.OK);
-                        dos.write(serializeObject(responseEnvelope));
+                        dos.writeObject(responseEnvelope);
                     }
 
                     // writing (storing) a new message
@@ -111,7 +111,7 @@ public class Server {
                         Message message = (Message) messageRequestEnvelope.getMessageObject();
                         insert(message);
                         System.out.println("Message stored.");
-                        dos.write(serializeObject(new Message.ResponseEnvelope<String>("Ok", Message.ResponseEnvelope.EnumResponseStatus.OK)));
+                        dos.writeObject(new Message.ResponseEnvelope<String>("Ok", Message.ResponseEnvelope.EnumResponseStatus.OK));
                     } else {
                         System.out.println("Unknown operation, rejecting request.");
                     }
