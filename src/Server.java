@@ -83,8 +83,8 @@ public class Server {
         while(true) {
 
             Socket s = ss.accept();
-            ObjectInputStream dis = new ObjectInputStream(s.getInputStream());
             ObjectOutputStream dos = new ObjectOutputStream(s.getOutputStream());
+            ObjectInputStream dis = new ObjectInputStream(s.getInputStream());
 
             Object inp = null;
 

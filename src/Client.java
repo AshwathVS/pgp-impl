@@ -96,8 +96,9 @@ public class Client {
         final String userId = args[2];
 
         Socket s = new Socket(host, port);
-        ObjectInputStream dis = new ObjectInputStream(s.getInputStream());
         ObjectOutputStream dos = new ObjectOutputStream(s.getOutputStream());
+        ObjectInputStream dis = new ObjectInputStream(s.getInputStream());
+
 
         Scanner scanner = new Scanner(System.in);
         String userInput = null;
