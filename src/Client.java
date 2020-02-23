@@ -89,51 +89,53 @@ public class Client {
         }
     }
 
-    public static void main(String [] args) throws Exception {
+    public static void main(String [] args) {
 
         String host = args[0]; // hostname of server
         int port = Integer.parseInt(args[1]); // port of server
         final String userId = args[2];
 
-        Socket s = new Socket(host, port);
-        ObjectOutputStream dos = new ObjectOutputStream(s.getOutputStream());
-        ObjectInputStream dis = new ObjectInputStream(s.getInputStream());
-
-
         Scanner scanner = new Scanner(System.in);
         String userInput = null;
 
-//        dos.writeObject(getReadRequestObject(userId));
-//
-//        Message.ResponseEnvelope<List<Message>> responseEnvelope = (Message.ResponseEnvelope<List<Message>>) dis.readObject();
-//        printMessages(responseEnvelope, userId);
-//        s.close();
+        try {
+            Socket s = new Socket(host, port);
+            ObjectOutputStream dos = new ObjectOutputStream(s.getOutputStream());
+            ObjectInputStream dis = new ObjectInputStream(s.getInputStream());
+            dos.writeObject(getReadRequestObject(userId));
 
-        System.out.println("Do you want to send message? (Y/N) ");
-        while (!"N".equals(userInput = scanner.nextLine().toUpperCase())) {
-            if ("Y".equals(userInput.toUpperCase())) {
+            Message.ResponseEnvelope<List<Message>> responseEnvelope = (Message.ResponseEnvelope<List<Message>>) dis.readObject();
+            printMessages(responseEnvelope, userId);
 
-                System.out.println("Who to?");
-                String recipientUserId = scanner.nextLine();
-
-                System.out.println("Enter your message");
-                String userMessage = scanner.nextLine();
-
-                // generate the message object and send request to server
-                Message message = CommonUtils.generateMessageObject(userMessage, recipientUserId, userId);
-                dos.writeObject(new Message.RequestEnvelope<>(message, Message.RequestEnvelope.EnumRequestType.WRITE));
-                Message.ResponseEnvelope<String> response = (Message.ResponseEnvelope<String>) dis.readObject();
-                if (!response.getResponseStatus().equals(Message.ResponseEnvelope.EnumResponseStatus.OK)) {
-                    System.out.println("Message not delivered.");
-                } else {
-                    System.out.println("Message sent.");
-                }
-
-            } else {
-                System.out.println("Incorrect input, try again.");
-            }
             System.out.println("Do you want to send message? (Y/N) ");
+            while (!"N".equals(userInput = scanner.nextLine().toUpperCase())) {
+                if ("Y".equals(userInput.toUpperCase())) {
+
+                    System.out.println("Who to?");
+                    String recipientUserId = scanner.nextLine();
+
+                    System.out.println("Enter your message");
+                    String userMessage = scanner.nextLine();
+
+                    // generate the message object and send request to server
+                    Message message = CommonUtils.generateMessageObject(userMessage, recipientUserId, userId);
+                    dos.writeObject(new Message.RequestEnvelope<>(message, Message.RequestEnvelope.EnumRequestType.WRITE));
+                    Message.ResponseEnvelope<String> response = (Message.ResponseEnvelope<String>) dis.readObject();
+                    if (!response.getResponseStatus().equals(Message.ResponseEnvelope.EnumResponseStatus.OK)) {
+                        System.out.println("Message not delivered.");
+                    } else {
+                        System.out.println("Message sent.");
+                    }
+
+                } else {
+                    System.out.println("Incorrect input, try again.");
+                }
+                System.out.println("Do you want to send message? (Y/N) ");
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
+
     }
 
     public static class AESUtil {

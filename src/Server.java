@@ -14,7 +14,9 @@ public class Server {
         if (messageStore.containsKey(message.getRecipientHash())) {
             messageStore.get(message.getRecipientHash()).add(message);
         } else {
-            messageStore.put(message.getRecipientHash(), Collections.singletonList(message));
+            messageStore.put(message.getRecipientHash(), new LinkedList<>() {{
+                add(message);
+            }});
         }
     }
 
@@ -117,12 +119,11 @@ public class Server {
                     }
                 }
             } catch (IOException e) {
-                s.close();
 //                System.err.println("Client closed its connection.");
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
-
+            s.close();
         }
     }
 }
