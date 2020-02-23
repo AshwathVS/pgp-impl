@@ -60,7 +60,7 @@ public class Client {
             Message.ResponseEnvelope<List<Message>> responseEnvelope = (Message.ResponseEnvelope<List<Message>>) dis.readObject();
             printMessages(responseEnvelope, userId);
 
-            System.out.println("Do you want to send message? (Y/N) ");
+            System.out.println("Do you want to send message? (Y/N)");
             while (!"N".equals(userInput = scanner.nextLine().toUpperCase())) {
                 if ("Y".equals(userInput.toUpperCase())) {
 
@@ -71,19 +71,27 @@ public class Client {
                     System.out.println("Enter your message");
                     String userMessage = scanner.nextLine();
 
-                    // generate the message object and send request to server
-                    Message message = CommonUtils.generateMessageObject(userMessage, recipientUserId, userId);
-
-                    // send the object to server
-                    dos.writeObject(new Message.RequestEnvelope<>(message, Message.RequestEnvelope.EnumRequestType.WRITE));
-
-                    // read response from server
-                    Message.ResponseEnvelope<String> response = (Message.ResponseEnvelope<String>) dis.readObject();
-
-                    if (!response.getResponseStatus().equals(Message.ResponseEnvelope.EnumResponseStatus.OK)) {
-                        System.out.println("Message not delivered.");
+                    if (recipientUserId == null || userMessage == null) {
+                        System.out.println("Illegal values entered, try again..");
                     } else {
-                        System.out.println("Message sent.");
+                        // generate the message object and send request to server
+                        Message message = CommonUtils.generateMessageObject(userMessage, recipientUserId, userId);
+
+                        if (null == message) {
+                            System.out.println("Error occurred while generating message object. Check keys and try again.");
+                        } else {
+                            // send the object to server
+                            dos.writeObject(new Message.RequestEnvelope<>(message, Message.RequestEnvelope.EnumRequestType.WRITE));
+
+                            // read response from server
+                            Message.ResponseEnvelope<String> response = (Message.ResponseEnvelope<String>) dis.readObject();
+
+                            if (!response.getResponseStatus().equals(Message.ResponseEnvelope.EnumResponseStatus.OK)) {
+                                System.out.println("Message not delivered.");
+                            } else {
+                                System.out.println("Message sent.");
+                            }
+                        }
                     }
 
                 } else {
@@ -254,7 +262,10 @@ public class Client {
          * @param unencryptedMessage
          * @param recipientUserId
          */
-        public static Message generateMessageObject(String unencryptedMessage, String recipientUserId, String senderUserId) {
+        public static Message generateMessageObject(String unencryptedMessage, String recipientUserId, String senderUserId) throws IllegalArgumentException {
+            if (recipientUserId == null || senderUserId == null) {
+                throw new IllegalArgumentException("Both sender id and recipient id should be valid");
+            }
             Message message = null;
             try {
                 message = new Message();
@@ -284,6 +295,7 @@ public class Client {
 
             } catch (Exception ex) {
                 ex.printStackTrace();
+                message = null;
             }
             return message;
         }
