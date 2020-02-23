@@ -91,7 +91,7 @@ public class Server {
             Object inp = null;
 
             try {
-                System.out.println("Trying to read input from socket....");
+                System.out.println("Trying to read input from socket...." + new Date());
                 while ((inp = dis.readObject()) != null) {
                     Message.RequestEnvelope<Object> messageRequestEnvelope = (Message.RequestEnvelope<Object>) inp;
                     Message.RequestEnvelope.EnumRequestType enumRequestType = messageRequestEnvelope.getMessageType();
@@ -125,7 +125,7 @@ public class Server {
                 ex.printStackTrace();
             }
             s.close();
-            System.out.println("Message read from socket, waiting for new message");
+            System.out.println("Message read from socket, waiting for new message" + new Date());
         }
     }
 }

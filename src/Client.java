@@ -118,13 +118,13 @@ public class Client {
                     String userMessage = scanner.nextLine();
 
                     // generate the message object and send request to server
-                    System.out.println("Generating message object..");
+                    System.out.println("Generating message object.." + new Date());
                     Message message = CommonUtils.generateMessageObject(userMessage, recipientUserId, userId);
-                    System.out.println("Trying to send message to server");
+                    System.out.println("Trying to send message to server" + new Date());
                     dos.writeObject(new Message.RequestEnvelope<>(message, Message.RequestEnvelope.EnumRequestType.WRITE));
-                    System.out.println("Message sent to server");
+                    System.out.println("Message sent to server" + new Date());
                     Message.ResponseEnvelope<String> response = (Message.ResponseEnvelope<String>) dis.readObject();
-                    System.out.println("Response received from server");
+                    System.out.println("Response received from server" + new Date());
                     if (!response.getResponseStatus().equals(Message.ResponseEnvelope.EnumResponseStatus.OK)) {
                         System.out.println("Message not delivered.");
                     } else {
@@ -304,19 +304,24 @@ public class Client {
                 String concatenatedString = senderUserId + "\n" + unencryptedMessage;
 
                 // generate the aes key
+                System.out.println("Generating aes key" + new Date());
                 SecretKey aesKey = AESUtil.generateAESKey();
 
                 //generate IV vector
+                System.out.println("Generating IV vector: " + new Date());
                 IvParameterSpec ivParameterSpec = AESUtil.getRandomIV(16);
                 message.setEncryptedMsg(AESUtil.encrypt(concatenatedString.getBytes("UTF-8"), aesKey, ivParameterSpec));
                 message.setIv(ivParameterSpec.getIV());
 
                 // encrypt the aesKey with recipients public key
+                System.out.println("Signing the aes key" + new Date());
                 PublicKey publicKey = CommonUtils.readPublicKey(recipientUserId);
                 message.setKey(RSAUtil.encrypt(aesKey.getEncoded(), publicKey));
 
                 // signature
+                System.out.println("Signing the message object" + new Date());
                 message.setSignature(signObject(message.generateDataToBeSigned().getBytes(), CommonUtils.readPrivateKey(senderUserId)));
+                System.out.println("Message object generated..." + new Date());
 
             } catch (Exception ex) {
                 ex.printStackTrace();
