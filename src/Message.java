@@ -1,4 +1,3 @@
-//package src;
 
 import java.io.*;
 import java.util.*;
@@ -72,6 +71,15 @@ public class Message implements Serializable {
         return this.recipientHash + this.timestamp + this.key + this.iv + this.encryptedMsg;
     }
 
+    /**
+     * This class is used to send a request to the server.
+     * Since there are two types of requests, i.e. reading the messages and sending a message, using a generic
+     * class with the message type as a parameter for differentiation.
+     *
+     * In the read request the sha256 of the userid will be sent,
+     * in the write request the message object will be sent
+     * @param <T>
+     */
     public static class RequestEnvelope<T> implements Serializable {
 
         private T messageObject;
@@ -108,6 +116,10 @@ public class Message implements Serializable {
         }
     }
 
+    /**
+     * This class is the response sent from the server to the client, contains the status and the response object
+     * @param <T>
+     */
     public static class ResponseEnvelope<T> implements Serializable {
         private T responseObject;
 
@@ -143,6 +155,9 @@ public class Message implements Serializable {
         }
     }
 
+    /**
+     * This is a basic POJO for storing the decrypted details of a message object.
+     */
     public static class DecryptedMessage {
         private String senderUserId;
 
@@ -184,7 +199,13 @@ public class Message implements Serializable {
             this.dateSent = dateSent;
         }
 
+        /**
+         * Prints the message, should be called after decryption
+         */
         public void printMessage() {
+            if (!isSignatureVerified) {
+                System.err.println("Signature verification process failed for the following message: ");
+            }
             System.out.println(this.senderUserId + "'s message:");
             System.out.println(this.message);
             System.out.println(this.dateSent);

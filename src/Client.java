@@ -1,5 +1,5 @@
-//package src;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -11,6 +11,7 @@ import java.net.Socket;
 import java.security.*;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 import java.util.Scanner;
 
 public class Client {
@@ -19,69 +20,19 @@ public class Client {
         return new Message.RequestEnvelope<String>(CommonUtils.convertByteArrayToHexArray(CommonUtils.getSHA256HashedValue(userId)), Message.RequestEnvelope.EnumRequestType.READ);
     }
 
-    public static byte[] serializeObject(Serializable object) throws Exception {
-        System.out.println("Serialization started at: " + new Date());
-        ByteArrayOutputStream baos = null;
-        ObjectOutputStream oos = null;
-        byte[] res = null;
-
-        try {
-            baos = new ByteArrayOutputStream();
-            oos = new ObjectOutputStream(baos);
-
-            oos.writeObject(object);
-            oos.flush();
-
-            res = baos.toByteArray();
-
-        } catch (Exception ex) {
-            throw ex;
-        } finally {
-            try {
-                if(oos != null)
-                    oos.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        System.out.println("Serialization ended at: " + new Date());
-        return res;
-    }
-
-    public static Serializable deserializeObject(byte[] rowObject) throws Exception {
-        System.out.println("Deserialization started at: " + new Date());
-        ObjectInputStream ois = null;
-        Serializable res = null;
-
-        try {
-
-            ois = new ObjectInputStream(new ByteArrayInputStream(rowObject));
-            res = (Serializable) ois.readObject();
-
-        } catch (Exception ex) {
-            throw ex;
-        } finally {
-            try {
-                if(ois != null)
-                    ois.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-        }
-        System.out.println("Deserialization ended at: " + new Date());
-        return res;
-
-    }
-
     public static void printMessages(Message.ResponseEnvelope<List<Message>> responseEnvelope, String userId) {
         List<Message> messages = responseEnvelope.getResponseObject();
         if (null != messages && messages.size() > 0) {
+            System.out.println("You have received " + messages.size() + " messages.");
             for (Message message : messages) {
-                Message.DecryptedMessage decryptedMessage = CommonUtils.getDecryptedMessageObject(message, userId);
-                if (null != decryptedMessage) {
-                    decryptedMessage.printMessage();
-                    System.out.println();
+                try {
+                    Message.DecryptedMessage decryptedMessage = CommonUtils.getDecryptedMessageObject(message, userId);
+                    if (null != decryptedMessage) {
+                        decryptedMessage.printMessage();
+                        System.out.println();
+                    }
+                } catch (BadPaddingException ex) {
+                    System.out.println("Unable to decrypt message, please check the keys.");
                 }
             }
         } else {
@@ -99,6 +50,8 @@ public class Client {
         String userInput = null;
 
         try {
+
+            // initialising sockets and streams for data transfer
             Socket s = new Socket(host, port);
             ObjectOutputStream dos = new ObjectOutputStream(s.getOutputStream());
             ObjectInputStream dis = new ObjectInputStream(s.getInputStream());
@@ -111,6 +64,7 @@ public class Client {
             while (!"N".equals(userInput = scanner.nextLine().toUpperCase())) {
                 if ("Y".equals(userInput.toUpperCase())) {
 
+                    // gather message info
                     System.out.println("Who to?");
                     String recipientUserId = scanner.nextLine();
 
@@ -118,13 +72,14 @@ public class Client {
                     String userMessage = scanner.nextLine();
 
                     // generate the message object and send request to server
-                    System.out.println("Generating message object.." + new Date());
                     Message message = CommonUtils.generateMessageObject(userMessage, recipientUserId, userId);
-                    System.out.println("Trying to send message to server" + new Date());
+
+                    // send the object to server
                     dos.writeObject(new Message.RequestEnvelope<>(message, Message.RequestEnvelope.EnumRequestType.WRITE));
-                    System.out.println("Message sent to server" + new Date());
+
+                    // read response from server
                     Message.ResponseEnvelope<String> response = (Message.ResponseEnvelope<String>) dis.readObject();
-                    System.out.println("Response received from server" + new Date());
+
                     if (!response.getResponseStatus().equals(Message.ResponseEnvelope.EnumResponseStatus.OK)) {
                         System.out.println("Message not delivered.");
                     } else {
@@ -142,7 +97,13 @@ public class Client {
 
     }
 
+    /**
+     * This class is a class which will process the encryption and decryption using the AES style
+     *
+     */
     public static class AESUtil {
+
+        private static final String AES_ALGORITH = "AES/CBC/PKCS5Padding";
 
         public static SecretKey generateAESKey() throws NoSuchAlgorithmException {
             KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
@@ -150,24 +111,32 @@ public class Client {
             return keyGenerator.generateKey();
         }
 
+        /**
+         * Used SecureRandom to generate the byte array, but is very slow.
+         * Using random instead of SecureRandom for smooth running of the client and server
+         */
         public static IvParameterSpec getRandomIV(int size) {
             IvParameterSpec ivParameterSpec = null;
             try {
-                SecureRandom secureRandom = SecureRandom.getInstanceStrong();
-                byte[] iv = new byte[16];
-                secureRandom.nextBytes(iv);
+
+                // SecureRandom secureRandom = SecureRandom.getInstanceStrong();
+                // byte[] iv = new byte[16];
+                // secureRandom.nextBytes(iv);
+
+                byte[] iv = new byte[size];
+                new Random().nextBytes(iv);
 
                 // Parameter Spec
                 ivParameterSpec = new IvParameterSpec(iv);
-            } catch (NoSuchAlgorithmException ex) {
-
+            } catch (Exception ex) {
+                // Secure random causes exception, leaving the catch block even though we can remove it.
             }
             return ivParameterSpec;
         }
 
         public static byte[] encrypt(byte[] input, SecretKey key, IvParameterSpec ivParameterSpec) {
             try {
-                Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+                Cipher cipher = Cipher.getInstance(AES_ALGORITH);
                 cipher.init(Cipher.ENCRYPT_MODE, key, ivParameterSpec);
                 return cipher.doFinal(input);
             } catch (Exception ex) {
@@ -178,7 +147,7 @@ public class Client {
 
         public static byte[] decrypt(byte[] encryptedBytes, SecretKey key, IvParameterSpec ivParameterSpec) {
             try {
-                Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+                Cipher cipher = Cipher.getInstance(AES_ALGORITH);
                 cipher.init(Cipher.DECRYPT_MODE, key, ivParameterSpec);
                 return cipher.doFinal(encryptedBytes);
             } catch (Exception ex) {
@@ -189,44 +158,35 @@ public class Client {
 
     }
 
+    /**
+     * This class is responsible for the RSA functions.
+     */
     public static class RSAUtil {
 
-        private static final String CIPHER_TYPE = "RSA/ECB/PKCS1Padding";
-
-        public static void generateKeyPair(String userId) {
-            try {
-                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-                kpg.initialize(2048);
-                KeyPair kp = kpg.genKeyPair();
-
-                ObjectOutputStream objOut = new ObjectOutputStream(new FileOutputStream(userId + ".pub"));
-                objOut.writeObject(kp.getPublic());
-                objOut.close();
-
-                objOut = new ObjectOutputStream(new FileOutputStream(userId + ".prv"));
-                objOut.writeObject(kp.getPrivate());
-            } catch (NoSuchAlgorithmException ex) {
-                ex.printStackTrace();
-            } catch (IOException ioEx) {
-                ioEx.printStackTrace();
-            }
-        }
+        private static final String RSA_ALGORITHM = "RSA/ECB/PKCS1Padding";
 
         public static byte[] encrypt(byte[] data, PublicKey publicKey) throws Exception {
-            Cipher cipher = Cipher.getInstance(CIPHER_TYPE);
+            Cipher cipher = Cipher.getInstance(RSA_ALGORITHM);
             cipher.init(Cipher.ENCRYPT_MODE, publicKey);
             return cipher.doFinal(data);
         }
 
         public static byte[] decrypt(byte[] data, PrivateKey privateKey) throws Exception {
-            Cipher cipher = Cipher.getInstance(CIPHER_TYPE);
+            Cipher cipher = Cipher.getInstance(RSA_ALGORITHM);
             cipher.init(Cipher.DECRYPT_MODE, privateKey);
             return cipher.doFinal(data);
         }
 
     }
 
+    /**
+     * This class will carry all the utility functions like reading the keys, hashing, signing, generating the Message object
+     * and decrypting the system.
+     */
+
     public static class CommonUtils {
+
+        private static final String SHA256_WITH_RSA = "SHA256withRSA";
 
         public static byte[] getSHA256HashedValue(String input) {
             try {
@@ -248,7 +208,7 @@ public class Client {
                 FileInputStream fileInputStream = new FileInputStream(userId + ".pub");
                 ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
                 publicKey = (PublicKey) objectInputStream.readObject();
-            } catch (Exception ex) {
+            } catch (ClassNotFoundException | IOException ex) {
                 ex.printStackTrace();
             }
             return publicKey;
@@ -267,14 +227,14 @@ public class Client {
         }
 
         public static byte[] signObject(byte[] message, PrivateKey privateKey) throws Exception {
-            Signature signature = Signature.getInstance("SHA256withRSA");
+            Signature signature = Signature.getInstance(SHA256_WITH_RSA);
             signature.initSign(privateKey);
             signature.update(message);
             return signature.sign();
         }
 
         public static boolean verifySign(byte[] message, PublicKey publicKey, byte[] signedSignature) throws Exception {
-            Signature signature = Signature.getInstance("SHA256withRSA");
+            Signature signature = Signature.getInstance(SHA256_WITH_RSA);
             signature.initVerify(publicKey);
             signature.update(message);
             return signature.verify(signedSignature);
@@ -304,24 +264,21 @@ public class Client {
                 String concatenatedString = senderUserId + "\n" + unencryptedMessage;
 
                 // generate the aes key
-                System.out.println("Generating aes key" + new Date());
                 SecretKey aesKey = AESUtil.generateAESKey();
 
-                //generate IV vector
-                System.out.println("Generating IV vector: " + new Date());
+                //generate IV vector and store the IV in the message object
                 IvParameterSpec ivParameterSpec = AESUtil.getRandomIV(16);
-                message.setEncryptedMsg(AESUtil.encrypt(concatenatedString.getBytes("UTF-8"), aesKey, ivParameterSpec));
                 message.setIv(ivParameterSpec.getIV());
 
+                // encrypting the message with the aes key
+                message.setEncryptedMsg(AESUtil.encrypt(concatenatedString.getBytes("UTF-8"), aesKey, ivParameterSpec));
+
                 // encrypt the aesKey with recipients public key
-                System.out.println("Signing the aes key" + new Date());
                 PublicKey publicKey = CommonUtils.readPublicKey(recipientUserId);
                 message.setKey(RSAUtil.encrypt(aesKey.getEncoded(), publicKey));
 
                 // signature
-                System.out.println("Signing the message object" + new Date());
                 message.setSignature(signObject(message.generateDataToBeSigned().getBytes(), CommonUtils.readPrivateKey(senderUserId)));
-                System.out.println("Message object generated..." + new Date());
 
             } catch (Exception ex) {
                 ex.printStackTrace();
@@ -330,7 +287,14 @@ public class Client {
         }
 
 
-        public static Message.DecryptedMessage getDecryptedMessageObject(Message encryptedMessage, String loggedInUserId) {
+        /**
+         * This method will decrypt the messages obtained from the server
+         * @param encryptedMessage
+         * @param loggedInUserId
+         * @return
+         * @throws BadPaddingException
+         */
+        public static Message.DecryptedMessage getDecryptedMessageObject(Message encryptedMessage, String loggedInUserId) throws BadPaddingException {
             Message.DecryptedMessage decryptedMessage = null;
             try {
                 // get aes key using current user private key
@@ -338,12 +302,16 @@ public class Client {
 
                 // using the aes key, iv get the encrypted message
                 SecretKey secretKey = new SecretKeySpec(aesKey, 0, aesKey.length, "AES");
+
+                // read the IV
                 IvParameterSpec ivParameterSpec = new IvParameterSpec(encryptedMessage.getIv());
+
+                // decrypt the encrypted message with the secret key and the IV
                 String plainMessage = new String(AESUtil.decrypt(encryptedMessage.getEncryptedMsg(), secretKey, ivParameterSpec));
+
+                // split the message and store the details
                 String[] splitMessage = plainMessage.split("\n");
-
                 decryptedMessage = new Message.DecryptedMessage();
-
                 decryptedMessage.setMessage(splitMessage[1]);
                 decryptedMessage.setSenderUserId(splitMessage[0]);
                 decryptedMessage.setDateSent(encryptedMessage.getTimestamp());

@@ -1,4 +1,3 @@
-//package src;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -20,61 +19,11 @@ public class Server {
         }
     }
 
-    public static byte[] serializeObject(Serializable object) throws Exception {
-        System.out.println("Serialization started at: " + new Date());
-        ByteArrayOutputStream baos = null;
-        ObjectOutputStream oos = null;
-        byte[] res = null;
-
-        try {
-            baos = new ByteArrayOutputStream();
-            oos = new ObjectOutputStream(baos);
-
-            oos.writeObject(object);
-            oos.flush();
-
-            res = baos.toByteArray();
-
-        } catch (Exception ex) {
-            throw ex;
-        } finally {
-            try {
-                if(oos != null)
-                    oos.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        System.out.println("Serialization ended at: " + new Date());
-        return res;
-    }
-
-    public static Serializable deserializeObject(byte[] rowObject) throws Exception {
-        System.out.println("Deserialization started at: " + new Date());
-        ObjectInputStream ois = null;
-        Serializable res = null;
-
-        try {
-
-            ois = new ObjectInputStream(new ByteArrayInputStream(rowObject));
-            res = (Serializable) ois.readObject();
-
-        } catch (Exception ex) {
-            throw ex;
-        } finally {
-            try {
-                if(ois != null)
-                    ois.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-        }
-        System.out.println("Deserialization ended at: " + new Date());
-        return res;
-
-    }
-
+    /**
+     *
+     * @param args
+     * @throws Exception
+     */
     public static void main(String[] args) throws Exception {
 
         int port = Integer.parseInt(args[0]);
@@ -91,7 +40,7 @@ public class Server {
             Object inp = null;
 
             try {
-                System.out.println("Trying to read input from socket...." + new Date());
+
                 while ((inp = dis.readObject()) != null) {
                     Message.RequestEnvelope<Object> messageRequestEnvelope = (Message.RequestEnvelope<Object>) inp;
                     Message.RequestEnvelope.EnumRequestType enumRequestType = messageRequestEnvelope.getMessageType();
@@ -120,12 +69,11 @@ public class Server {
                     }
                 }
             } catch (IOException e) {
-//                System.err.println("Client closed its connection.");
+                System.err.println("Client closed its connection.");
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
             s.close();
-            System.out.println("Message read from socket, waiting for new message" + new Date());
         }
     }
 }
