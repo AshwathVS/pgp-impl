@@ -7,18 +7,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Server {
 
-    private static final ConcurrentHashMap<String, List<Message>> messageStore = new ConcurrentHashMap<>(100);
-
-    public static void insert(Message message) {
-        if (messageStore.containsKey(message.getRecipientHash())) {
-            messageStore.get(message.getRecipientHash()).add(message);
-        } else {
-            messageStore.put(message.getRecipientHash(), new LinkedList<>() {{
-                add(message);
-            }});
-        }
-    }
-
     /**
      *
      * @param args
@@ -26,6 +14,7 @@ public class Server {
      */
     public static void main(String[] args) throws Exception {
 
+        ConcurrentHashMap<String, List<Message>> messageStore = new ConcurrentHashMap<>(100);
         int port = Integer.parseInt(args[0]);
         ServerSocket ss = new ServerSocket(port);
 
@@ -61,8 +50,21 @@ public class Server {
                     // writing (storing) a new message
                     else if (enumRequestType == Message.RequestEnvelope.EnumRequestType.WRITE) {
                         Message message = (Message) messageRequestEnvelope.getMessageObject();
-                        insert(message);
+
+                        /**
+                         * Store the messages
+                         */
+                        final String recipientHash = message.getRecipientHash();
+                        if (messageStore.containsKey(recipientHash)) {
+                            messageStore.get(recipientHash).add(message);
+                        } else {
+                            List<Message> messages = new ArrayList<>(10);
+                            messages.add(message);
+                            messageStore.put(recipientHash, messages);
+                        }
                         System.out.println("Message stored.");
+
+                        // send response
                         dos.writeObject(new Message.ResponseEnvelope<String>("Ok", Message.ResponseEnvelope.EnumResponseStatus.OK));
                     } else {
                         System.out.println("Unknown operation, rejecting request.");

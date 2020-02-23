@@ -45,7 +45,7 @@ public class Client {
         String host = args[0]; // hostname of server
         int port = Integer.parseInt(args[1]); // port of server
         final String userId = args[2];
-
+        System.out.println("Welcome " + userId);
         Scanner scanner = new Scanner(System.in);
         String userInput = null;
 
@@ -186,7 +186,7 @@ public class Client {
 
     public static class CommonUtils {
 
-        private static final String SHA256_WITH_RSA = "SHA256withRSA";
+        private static final String SHA1_WITH_RSA = "SHA1withRSA";
 
         public static byte[] getSHA256HashedValue(String input) {
             try {
@@ -203,9 +203,10 @@ public class Client {
         }
 
         public static PublicKey readPublicKey(String userId) {
+            System.out.println("Reading public key of :" + userId);
             PublicKey publicKey = null;
             try {
-                FileInputStream fileInputStream = new FileInputStream(userId + ".pub");
+                FileInputStream fileInputStream = new FileInputStream("./" + userId + ".pub");
                 ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
                 publicKey = (PublicKey) objectInputStream.readObject();
             } catch (ClassNotFoundException | IOException ex) {
@@ -215,9 +216,10 @@ public class Client {
         }
 
         public static PrivateKey readPrivateKey(String userId) {
+            System.out.println("Reading private key of :" + userId);
             PrivateKey privateKey = null;
             try {
-                FileInputStream fileInputStream = new FileInputStream(userId + ".prv");
+                FileInputStream fileInputStream = new FileInputStream("./" + userId + ".prv");
                 ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
                 privateKey = (PrivateKey) objectInputStream.readObject();
             } catch (Exception ex) {
@@ -227,14 +229,14 @@ public class Client {
         }
 
         public static byte[] signObject(byte[] message, PrivateKey privateKey) throws Exception {
-            Signature signature = Signature.getInstance(SHA256_WITH_RSA);
+            Signature signature = Signature.getInstance(SHA1_WITH_RSA);
             signature.initSign(privateKey);
             signature.update(message);
             return signature.sign();
         }
 
         public static boolean verifySign(byte[] message, PublicKey publicKey, byte[] signedSignature) throws Exception {
-            Signature signature = Signature.getInstance(SHA256_WITH_RSA);
+            Signature signature = Signature.getInstance(SHA1_WITH_RSA);
             signature.initVerify(publicKey);
             signature.update(message);
             return signature.verify(signedSignature);
@@ -317,7 +319,7 @@ public class Client {
                 decryptedMessage.setDateSent(encryptedMessage.getTimestamp());
 
                 //verify the signature
-                boolean isSignVerified = verifySign(encryptedMessage.generateDataToBeSigned().getBytes(), CommonUtils.readPublicKey(loggedInUserId), encryptedMessage.getSignature());
+                boolean isSignVerified = verifySign(encryptedMessage.generateDataToBeSigned().getBytes(), CommonUtils.readPublicKey(decryptedMessage.getSenderUserId()), encryptedMessage.getSignature());
                 decryptedMessage.setSignatureVerified(isSignVerified);
 
             } catch (Exception ex) {

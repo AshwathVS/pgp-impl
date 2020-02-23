@@ -68,7 +68,7 @@ public class Message implements Serializable {
     }
 
     public String generateDataToBeSigned() {
-        return this.recipientHash + this.timestamp + this.key + this.iv + this.encryptedMsg;
+        return this.recipientHash + this.timestamp + new String(this.key) + new String(this.iv) + new String(this.encryptedMsg);
     }
 
     /**
