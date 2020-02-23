@@ -119,8 +119,11 @@ public class Client {
 
                     // generate the message object and send request to server
                     Message message = CommonUtils.generateMessageObject(userMessage, recipientUserId, userId);
+                    System.out.println("Trying to send message to server");
                     dos.writeObject(new Message.RequestEnvelope<>(message, Message.RequestEnvelope.EnumRequestType.WRITE));
+                    System.out.println("Message sent to server");
                     Message.ResponseEnvelope<String> response = (Message.ResponseEnvelope<String>) dis.readObject();
+                    System.out.println("Response received from server");
                     if (!response.getResponseStatus().equals(Message.ResponseEnvelope.EnumResponseStatus.OK)) {
                         System.out.println("Message not delivered.");
                     } else {
