@@ -203,7 +203,7 @@ public class Client {
         }
 
         public static PublicKey readPublicKey(String userId) {
-            System.out.println("Reading public key of :" + userId);
+            // System.out.println("Reading public key of :" + userId);
             PublicKey publicKey = null;
             try {
                 FileInputStream fileInputStream = new FileInputStream("./" + userId + ".pub");
@@ -216,7 +216,7 @@ public class Client {
         }
 
         public static PrivateKey readPrivateKey(String userId) {
-            System.out.println("Reading private key of :" + userId);
+            // System.out.println("Reading private key of :" + userId);
             PrivateKey privateKey = null;
             try {
                 FileInputStream fileInputStream = new FileInputStream("./" + userId + ".prv");
