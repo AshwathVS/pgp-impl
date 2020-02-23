@@ -118,6 +118,7 @@ public class Client {
                     String userMessage = scanner.nextLine();
 
                     // generate the message object and send request to server
+                    System.out.println("Generating message object..");
                     Message message = CommonUtils.generateMessageObject(userMessage, recipientUserId, userId);
                     System.out.println("Trying to send message to server");
                     dos.writeObject(new Message.RequestEnvelope<>(message, Message.RequestEnvelope.EnumRequestType.WRITE));
