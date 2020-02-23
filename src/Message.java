@@ -204,7 +204,7 @@ public class Message implements Serializable {
          */
         public void printMessage() {
             if (!isSignatureVerified) {
-                System.err.println("Signature verification process failed for the following message: ");
+                System.err.println("Warning: Signature verification process failed for the following message.");
             }
             System.out.println(this.senderUserId + "'s message:");
             System.out.println(this.message);
