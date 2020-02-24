@@ -100,7 +100,7 @@ public class Client {
                 System.out.println("Do you want to send message? (Y/N) ");
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
+//            ex.printStackTrace();
         }
 
     }
@@ -148,7 +148,7 @@ public class Client {
                 cipher.init(Cipher.ENCRYPT_MODE, key, ivParameterSpec);
                 return cipher.doFinal(input);
             } catch (Exception ex) {
-                ex.printStackTrace();
+//                ex.printStackTrace();
                 return null;
             }
         }
@@ -159,7 +159,7 @@ public class Client {
                 cipher.init(Cipher.DECRYPT_MODE, key, ivParameterSpec);
                 return cipher.doFinal(encryptedBytes);
             } catch (Exception ex) {
-                ex.printStackTrace();
+//                ex.printStackTrace();
                 return null;
             }
         }
@@ -201,7 +201,7 @@ public class Client {
                 MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
                 return messageDigest.digest(input.getBytes());
             } catch (NoSuchAlgorithmException ex) {
-                ex.printStackTrace();
+//                ex.printStackTrace();
                 return null;
             }
         }
@@ -218,7 +218,7 @@ public class Client {
                 ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
                 publicKey = (PublicKey) objectInputStream.readObject();
             } catch (ClassNotFoundException | IOException ex) {
-                ex.printStackTrace();
+//                ex.printStackTrace();
             }
             return publicKey;
         }
@@ -231,7 +231,7 @@ public class Client {
                 ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
                 privateKey = (PrivateKey) objectInputStream.readObject();
             } catch (Exception ex) {
-                ex.printStackTrace();
+//                ex.printStackTrace();
             }
             return privateKey;
         }
@@ -294,7 +294,7 @@ public class Client {
                 message.setSignature(signObject(message.generateDataToBeSigned().getBytes(), CommonUtils.readPrivateKey(senderUserId)));
 
             } catch (Exception ex) {
-                ex.printStackTrace();
+//                ex.printStackTrace();
                 message = null;
             }
             return message;
@@ -335,7 +335,10 @@ public class Client {
                 decryptedMessage.setSignatureVerified(isSignVerified);
 
             } catch (Exception ex) {
-                ex.printStackTrace();
+                if (ex instanceof BadPaddingException) {
+                    throw new BadPaddingException("Incorrect key used for decryption.");
+                }
+//                ex.printStackTrace();
             }
             return decryptedMessage;
         }

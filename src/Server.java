@@ -73,7 +73,7 @@ public class Server {
             } catch (IOException e) {
                 System.err.println("Client closed its connection.");
             } catch (Exception ex) {
-                ex.printStackTrace();
+//                ex.printStackTrace();
             }
             s.close();
         }
