@@ -1,13 +1,11 @@
-//package src;
+package src;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
-import java.io.Serializable;
 import java.math.BigInteger;
-import java.nio.ByteBuffer;
 import java.security.*;
 import java.util.Date;
 
@@ -53,15 +51,15 @@ public class CommonUtils {
 
     public static byte[] signObject(byte[] message, PrivateKey privateKey) throws Exception {
         Signature signature = Signature.getInstance("SHA256withRSA");
-        signature.update(message);
         signature.initSign(privateKey);
+        signature.update(message);
         return signature.sign();
     }
 
     public static boolean verifySign(byte[] message, PublicKey publicKey, byte[] signedSignature) throws Exception {
         Signature signature = Signature.getInstance("SHA256withRSA");
-        signature.update(message);
         signature.initVerify(publicKey);
+        signature.update(message);
         return signature.verify(signedSignature);
     }
 
@@ -86,32 +84,37 @@ public class CommonUtils {
             // generate hash of user id and storing in recipientHash
             message.setRecipientHash(CommonUtils.convertByteArrayToHexArray(CommonUtils.getSHA256HashedValue(recipientUserId)));
 
-            String concatenatedString = recipientUserId + "\n" + unencryptedMessage;
+            String concatenatedString = senderUserId + "\n" + unencryptedMessage;
 
             // generate the aes key
+            System.out.println("Generating aes key" + new Date());
             SecretKey aesKey = AESUtil.generateAESKey();
 
             //generate IV vector
+            System.out.println("Generating IV vector: " + new Date());
             IvParameterSpec ivParameterSpec = AESUtil.getRandomIV(16);
             message.setEncryptedMsg(AESUtil.encrypt(concatenatedString.getBytes("UTF-8"), aesKey, ivParameterSpec));
             message.setIv(ivParameterSpec.getIV());
 
             // encrypt the aesKey with recipients public key
+            System.out.println("Signing the aes key" + new Date());
             PublicKey publicKey = CommonUtils.readPublicKey(recipientUserId);
             message.setKey(RSAUtil.encrypt(aesKey.getEncoded(), publicKey));
 
             // signature
+            System.out.println("Signing the message object" + new Date());
             message.setSignature(signObject(message.generateDataToBeSigned().getBytes(), CommonUtils.readPrivateKey(senderUserId)));
+            System.out.println("Message object generated..." + new Date());
 
         } catch (Exception ex) {
-
+            ex.printStackTrace();
         }
         return message;
     }
 
 
-    public static DecryptedMessage getDecryptedMessageObject(Message encryptedMessage, String loggedInUserId) {
-        DecryptedMessage decryptedMessage = null;
+    public static Message.DecryptedMessage getDecryptedMessageObject(Message encryptedMessage, String loggedInUserId) {
+        Message.DecryptedMessage decryptedMessage = null;
         try {
             // get aes key using current user private key
             byte[] aesKey = RSAUtil.decrypt(encryptedMessage.getKey(), CommonUtils.readPrivateKey(loggedInUserId));
@@ -122,7 +125,7 @@ public class CommonUtils {
             String plainMessage = new String(AESUtil.decrypt(encryptedMessage.getEncryptedMsg(), secretKey, ivParameterSpec));
             String[] splitMessage = plainMessage.split("\n");
 
-             decryptedMessage = new DecryptedMessage();
+            decryptedMessage = new Message.DecryptedMessage();
 
             decryptedMessage.setMessage(splitMessage[1]);
             decryptedMessage.setSenderUserId(splitMessage[0]);
@@ -138,27 +141,4 @@ public class CommonUtils {
         return decryptedMessage;
     }
 
-    public static void main(String[] args) throws Exception {
-//        PublicKey publicKey = readPublicKey("ash");
-////        System.out.println(publicKey != null);
-//        String base = "This is ashwath";
-//        byte[] encrypted = RSAUtil.encrypt(base.getBytes(), publicKey);
-//
-//
-//
-//        PrivateKey privateKey = readPrivateKey("ash");
-//        String decrypted = new String(RSAUtil.decrypt(encrypted, privateKey));
-//        System.out.println(decrypted);
-////        System.out.println(privateKey != null);
-//
-//
-//        System.out.println("AES PART....");
-//        SecretKey secretKey = AESUtil.generateAESKey();
-//        IvParameterSpec ivParameterSpec = AESUtil.getRandomIV(16);
-//        byte[] encrp = AESUtil.encrypt(base.getBytes(), secretKey, ivParameterSpec);
-//        String decryp = new String(AESUtil.decrypt(encrp, secretKey, ivParameterSpec));
-//        System.out.println(decryp);
-
-        Message message = generateMessageObject("this is ashwath", "jay", "ash");
-    }
 }
