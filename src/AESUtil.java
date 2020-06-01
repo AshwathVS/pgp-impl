@@ -1,11 +1,11 @@
-//package src;
+package src;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
-import java.security.*;
-import java.util.Date;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 
 public class AESUtil {
 

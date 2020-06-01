@@ -1,4 +1,4 @@
-//package src;
+package src;
 
 import javax.crypto.Cipher;
 import java.io.FileOutputStream;
@@ -7,6 +7,7 @@ import java.io.ObjectOutputStream;
 import java.security.*;
 
 public class RSAUtil {
+
     private static final String CIPHER_TYPE = "RSA/ECB/PKCS1Padding";
 
     public static void generateKeyPair(String userId) {
